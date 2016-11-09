@@ -1,7 +1,7 @@
 # Setting up the Full Hyperledger fabric Developer's Environment
 
  * See [Setting Up The Development Environment](../dev-setup/devenv.md) to set up your development environment.
- 
+
  * The following commands are all issued from the vagrant environment. The following will open a terminal session:
 
 ```
@@ -35,7 +35,7 @@
    make doc
 ```  
 
- * To build the reference documentation in the [Self Contained Node.js Environment](node-sdk-self-contained.md):
+ * To build the reference documentation in the [Fabric-starter-kit](../starter/fabric-starter-kit.md)
 
 ```
    docker exec -it nodesdk /bin/bash
@@ -47,4 +47,3 @@
  ```
    /opt/gopath/src/github.com/hyperledger/fabric/sdk/node/doc
  ```
-    
