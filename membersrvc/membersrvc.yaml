@@ -195,6 +195,8 @@ eca:
 #
                 vp0: 4 vp0_secret
                 vp1: 4 vp1_secret
+                vp2: 4 vp2_secret
+                vp3: 4 vp3_secret
 
                 test_user0: 1 MS9qrN8hFjlE bank_a
                 test_user1: 1 jGlNl6ImkuDo institution_a
