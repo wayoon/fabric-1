@@ -76,6 +76,20 @@ func Start(cc Chaincode) error {
 
 	chaincodeLogger.Debugf("Peer address: %s", getPeerAddress())
 
+	// viper env setting
+	if viper.GetString("peer.tls.enabled")=="" {
+		viper.BindEnv("peer.tls.enabled", "PEER_TLS_ENABLED")
+	}
+	if viper.GetString("peer.tls.serverhostoverride") == "" {
+		viper.BindEnv("peer.tls.serverhostoverride", "PEER_TLS_SERVERHOSTOVERRIDE")
+	}
+	if viper.GetString("peer.tls.cert.file") == "" {
+		viper.BindEnv("peer.tls.cert.file", "PEER_TLS_CERT_FILE")
+	}
+	if viper.GetString("peer.tls.key.file") == "" {
+		viper.BindEnv("peer.tls.key.file", "PEER_TLS_KEY_FILE")
+	}
+	
 	// Establish connection with validating peer
 	clientConn, err := newPeerClientConnection()
 	if err != nil {
