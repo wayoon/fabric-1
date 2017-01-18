@@ -111,7 +111,6 @@ type ChaincodeStubInterface interface {
 	// also be called with A only to return all rows that have A and any value
 	// for C and D as their key.
 	GetRows(tableName string, key []Column) (<-chan Row, error)
-	GetRows2(tableName string, key []Column, start int, num int) ([]Row, error)
 	
 	// DeleteRow deletes the row for the given key from the specified table.
 	DeleteRow(tableName string, key []Column) error
@@ -159,6 +158,20 @@ type ChaincodeStubInterface interface {
 
 	// SetEvent saves the event to be sent when a transaction is made part of a block
 	SetEvent(name string, payload []byte) error
+	
+	//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+	//state based on a given partial composite key. This function returns an
+	//iterator which can be used to iterate over all composite keys whose prefix
+	//matches the given partial composite key. This function should be used only for
+	//a partial composite key. For a full composite key, an iter with empty response
+	//would be returned.
+	PartialCompositeKeyQuery(objectType string, keys []string) (StateRangeQueryIteratorInterface, error)
+
+	//Given a list of attributes, createCompundKey function combines these attributes
+	//to form a composite key.
+	CreateCompositeKey(objectType string, attributes []string) (string, error)
+	
+	
 }
 
 // StateRangeQueryIteratorInterface allows a chaincode to iterate over a range of

@@ -188,6 +188,23 @@ func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateRangeQueryI
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
 }
 
+//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//state based on a given partial composite key. This function returns an
+//iterator which can be used to iterate over all composite keys whose prefix
+//matches the given partial composite key. This function should be used only for
+//a partial composite key. For a full composite key, an iter with empty response
+//would be returned.
+func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	return partialCompositeKeyQuery(stub, objectType, attributes)
+}
+
+//Given a list of attributes, createCompositeKey function combines these attributes
+//to form a composite key.
+func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
+	return createCompositeKey(stub, objectType, attributes)
+}
+
+
 // Not implemented
 func (stub *MockStub) CreateTable(name string, columnDefinitions []*ColumnDefinition) error {
 	return nil
@@ -223,9 +240,7 @@ func (stub *MockStub) GetRow(tableName string, key []Column) (Row, error) {
 func (stub *MockStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
 	return nil, nil
 }
-func (stub *MockStub) GetRows2(tableName string, key []Column, start int, num int) ([]Row, error) {
-	return nil, nil
-}
+
 // Not implemented
 func (stub *MockStub) DeleteRow(tableName string, key []Column) error {
 	return nil

@@ -377,6 +377,42 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQ
 	return &StateRangeQueryIterator{handler, stub.TxID, response, 0}, nil
 }
 
+
+//Given a list of attributes, createCompositeKey function combines these attributes
+//to form a composite key.
+func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
+	return createCompositeKey(stub, objectType, attributes)
+}
+
+func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
+	var compositeKey bytes.Buffer
+	compositeKey.WriteString(objectType)
+	for _, attribute := range attributes {
+		compositeKey.WriteString(strconv.Itoa(len(attribute)))
+		compositeKey.WriteString(attribute)
+	}
+	return compositeKey.String(), nil
+}
+
+//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//state based on a given partial composite key. This function returns an
+//iterator which can be used to iterate over all composite keys whose prefix
+//matches the given partial composite key. This function should be used only for
+//a partial composite key. For a full composite key, an iter with empty response
+//would be returned.
+func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	return partialCompositeKeyQuery(stub, objectType, attributes)
+}
+
+func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
+	keysIter, err := stub.RangeQueryState(partialCompositeKey+"1", partialCompositeKey+":")
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching rows: %s", err)
+	}
+	return keysIter, nil
+}
+
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
 func (iter *StateRangeQueryIterator) HasNext() bool {
@@ -647,67 +683,6 @@ func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, 
 		}
 		close(rows)
 	}()
-
-	return rows, nil
-
-}
-
-func (stub *ChaincodeStub) GetRows2(tableName string, key []Column, start int, num int) ([]Row, error) {
-
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return nil, err
-	}
-
-	table, err := stub.getTable(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	var rows []Row
-	// Need to check for special case where table has a single column
-	if len(table.GetColumnDefinitions()) < 2 && len(key) > 0 {
-
-		row, err := stub.GetRow(tableName, key)
-		if err != nil {
-			return nil, err
-		}
-		
-		rows = append(rows, row)
-		return rows, nil
-	}
-
-	chaincodeLogger.Debug("keyString= " + keyString)
-	iter, err := stub.RangeQueryState(keyString+"1", keyString+":")
-	if err != nil {
-		return nil, fmt.Errorf("Error fetching rows: %s", err)
-	}
-	
-	count := 0
-	numcount := 0
-	for iter.HasNext() {
-		_, rowBytes, err := iter.Next()
-		if err != nil {
-			break
-		}
-
-		var row Row
-		err = proto.Unmarshal(rowBytes, &row)
-		if err != nil {
-			return nil, err
-		} else {
-			if (count >= start) {
-				rows = append(rows, row)
-				numcount++
-				if (num > 0 && numcount >= num) {
-					break;
-				}
-			}
-			count++
-		}
-	}
-
-	chaincodeLogger.Debugf("total count : %v", count)
 
 	return rows, nil
 
