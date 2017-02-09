@@ -35,7 +35,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Is the configuration cached?
@@ -85,17 +85,11 @@ func CacheConfiguration() (err error) {
 	// getPeerEndpoint returns the PeerEndpoint for this Peer instance.  Affected by env:peer.addressAutoDetect
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		var peerAddress string
-		var peerType pb.PeerEndpoint_Type
 		peerAddress, err := getLocalAddress()
 		if err != nil {
 			return nil, err
 		}
-		if viper.GetBool("peer.validator.enabled") {
-			peerType = pb.PeerEndpoint_VALIDATOR
-		} else {
-			peerType = pb.PeerEndpoint_NON_VALIDATOR
-		}
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress, Type: peerType}, nil
+		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress}, nil
 	}
 
 	localAddress, localAddressError = getLocalAddress()
@@ -106,7 +100,7 @@ func CacheConfiguration() (err error) {
 	syncBlocksChannelSize = viper.GetInt("peer.sync.blocks.channelSize")
 	validatorEnabled = viper.GetBool("peer.validator.enabled")
 
-	securityEnabled = viper.GetBool("security.enabled")
+	securityEnabled = true
 
 	configurationCached = true
 

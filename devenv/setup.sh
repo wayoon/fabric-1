@@ -59,6 +59,10 @@ case "${DOCKER_STORAGE_BACKEND}" in
      exit 1;;
 esac
 
+# Install docker-compose
+curl -L https://github.com/docker/compose/releases/download/1.8.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
 # Configure docker
 DOCKER_OPTS="-s=${DOCKER_STORAGE_BACKEND_STRING} -r=true --api-cors-header='*' -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock ${DOCKER_OPTS}"
 sed -i.bak '/^DOCKER_OPTS=/{h;s|=.*|=\"'"${DOCKER_OPTS}"'\"|};${x;/^$/{s||DOCKER_OPTS=\"'"${DOCKER_OPTS}"'\"|;H};x}' /etc/default/docker
@@ -91,17 +95,20 @@ sudo chown -R vagrant:vagrant $GOPATH
 # Update limits.conf to increase nofiles for RocksDB
 sudo cp /hyperledger/devenv/limits.conf /etc/security/limits.conf
 
-# configure vagrant specific environment
+# Configure vagrant specific environment
 cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 # Expose the devenv/tools in the $PATH
 export PATH=\$PATH:/hyperledger/devenv/tools:/hyperledger/build/bin
 export VAGRANT=1
 export CGO_CFLAGS=" "
-export CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 EOF
 
 # Set our shell prompt to something less ugly than the default from packer
-echo "PS1=\"\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ \"" >> /home/vagrant/.bashrc
+# Also make it so that it cd's the user to the fabric dir upon logging in
+cat <<EOF >> /home/vagrant/.bashrc
+PS1="\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ "
+cd $GOPATH/src/github.com/hyperledger/fabric/
+EOF
 
 # finally, remove our warning so the user knows this was successful
 rm /etc/motd

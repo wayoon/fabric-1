@@ -38,13 +38,13 @@ Full details of how to contribute to this project are documented [here](http://h
 
 [Hyperledger mailing lists and archives](http://lists.hyperledger.org/)
 
-[Hyperledger Slack](http://hyperledgerproject.slack.com) - if you need an invitation, try our [Slack inviter](https://slack.hyperledger.org)
+[Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
 
-[Hyperledger Wiki](https://github.com/hyperledger/hyperledger/wiki)
+[Hyperledger Wiki](https://wiki.hyperledger.org/)
 
-[Hyperledger Code of Conduct](https://github.com/hyperledger/hyperledger/wiki/Hyperledger-Project-Code-of-Conduct)
+[Hyperledger Code of Conduct](https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct)
 
-[Community Calendar](https://github.com/hyperledger/hyperledger/wiki/PublicMeetingCalendar)
+[Community Calendar](https://wiki.hyperledger.org/community/calendar-public-meetings)
 
 ## License <a name="license"></a>
 The Hyperledger Project uses the [Apache License Version 2.0](LICENSE) software

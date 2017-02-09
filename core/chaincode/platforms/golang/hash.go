@@ -33,87 +33,12 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
-	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/util"
-	pb "github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/common/util"
+	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("golang/hash")
-
-//core hash computation factored out for testing
-func computeHash(contents []byte, hash []byte) []byte {
-	newSlice := make([]byte, len(hash)+len(contents))
-
-	//copy the contents
-	copy(newSlice[0:len(contents)], contents[:])
-
-	//add the previous hash
-	copy(newSlice[len(contents):], hash[:])
-
-	//compute new hash
-	hash = util.ComputeCryptoHash(newSlice)
-
-	return hash
-}
-
-//hashFilesInDir computes h=hash(h,file bytes) for each file in a directory
-//Directory entries are traversed recursively. In the end a single
-//hash value is returned for the entire directory structure
-func hashFilesInDir(rootDir string, dir string, hash []byte, tw *tar.Writer) ([]byte, error) {
-	currentDir := filepath.Join(rootDir, dir)
-	logger.Debugf("hashFiles %s", currentDir)
-	//ReadDir returns sorted list of files in dir
-	fis, err := ioutil.ReadDir(currentDir)
-	if err != nil {
-		return hash, fmt.Errorf("ReadDir failed %s\n", err)
-	}
-	for _, fi := range fis {
-		name := filepath.Join(dir, fi.Name())
-		if fi.IsDir() {
-			var err error
-			hash, err = hashFilesInDir(rootDir, name, hash, tw)
-			if err != nil {
-				return hash, err
-			}
-			continue
-		}
-		fqp := filepath.Join(rootDir, name)
-		buf, err := ioutil.ReadFile(fqp)
-		if err != nil {
-			fmt.Printf("Error reading %s\n", err)
-			return hash, err
-		}
-
-		//get the new hash from file contents
-		hash = computeHash(buf, hash)
-
-		if tw != nil {
-			is := bytes.NewReader(buf)
-			if err = cutil.WriteStreamToPackage(is, fqp, filepath.Join("src", name), tw); err != nil {
-				return hash, fmt.Errorf("Error adding file to tar %s", err)
-			}
-		}
-	}
-	return hash, nil
-}
-
-func isCodeExist(tmppath string) error {
-	file, err := os.Open(tmppath)
-	if err != nil {
-		return fmt.Errorf("Download failed %s", err)
-	}
-
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("Could not stat file %s", err)
-	}
-
-	if !fi.IsDir() {
-		return fmt.Errorf("File %s is not dir\n", file.Name())
-	}
-
-	return nil
-}
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 	codegopath = ""
@@ -133,7 +58,7 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 		}
 	}
 	if origgopath == "" {
-		err = fmt.Errorf("GOPATH not defined")
+		err = errors.New("GOPATH not defined")
 		return
 	}
 	// Only take the first element of GOPATH
@@ -201,7 +126,7 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 	logger.Debugf("getCodeFromFS %s", path)
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		err = fmt.Errorf("GOPATH not defined")
+		err = errors.New("GOPATH not defined")
 		return
 	}
 	// Only take the first element of GOPATH
@@ -210,25 +135,33 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 	return
 }
 
-//generateHashcode gets hashcode of the code under path. If path is a HTTP(s) url
-//it downloads the code first to compute the hash.
+//collectChaincodeFiles collects chaincode files and generates hashcode for the
+//package. If path is a HTTP(s) url it downloads the code first.
 //NOTE: for dev mode, user builds and runs chaincode manually. The name provided
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
-//with the same (name, ctor, args)
-func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
+//with the same (name, input, args)
+func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
-		return "", fmt.Errorf("Cannot generate hashcode from nil spec")
+		return "", errors.New("Cannot collect files from nil spec")
 	}
 
 	chaincodeID := spec.ChaincodeID
 	if chaincodeID == nil || chaincodeID.Path == "" {
-		return "", fmt.Errorf("Cannot generate hashcode from empty chaincode path")
+		return "", errors.New("Cannot collect files from empty chaincode path")
 	}
 
-	ctor := spec.CtorMsg
-	if ctor == nil || len(ctor.Args) == 0 {
-		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
+	//install will not have inputs and we don't have to collect hash for it
+	var inputbytes []byte
+
+	var err error
+	if spec.Input == nil || len(spec.Input.Args) == 0 {
+		logger.Debugf("not using input for hash computation for %v ", chaincodeID)
+	} else {
+		inputbytes, err = proto.Marshal(spec.Input)
+		if err != nil {
+			return "", fmt.Errorf("Error marshalling constructor: %s", err)
+		}
 	}
 
 	//code root will point to the directory where the code exists
@@ -245,7 +178,6 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 
 	path := chaincodeID.Path
 
-	var err error
 	var actualcodepath string
 	if strings.HasPrefix(path, "http://") {
 		ishttp = true
@@ -265,16 +197,16 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	}
 
 	tmppath := filepath.Join(codegopath, "src", actualcodepath)
-	if err = isCodeExist(tmppath); err != nil {
+	if err = ccutil.IsCodeExist(tmppath); err != nil {
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
-	ctorbytes, err := proto.Marshal(ctor)
-	if err != nil {
-		return "", fmt.Errorf("Error marshalling constructor: %s", err)
-	}
-	hash := util.GenerateHashFromSignature(actualcodepath, ctorbytes)
 
-	hash, err = hashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
+	hash := []byte{}
+	if inputbytes != nil {
+		hash = util.GenerateHashFromSignature(actualcodepath, inputbytes)
+	}
+
+	hash, err = ccutil.HashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
 	if err != nil {
 		return "", fmt.Errorf("Could not get hashcode for %s - %s\n", path, err)
 	}

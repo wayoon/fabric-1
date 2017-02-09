@@ -17,47 +17,109 @@
 package chaincode
 
 import (
+	"encoding/json"
 	"testing"
 
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Nil(result)
 }
 
 func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Nil(result)
 }
 
+func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
+	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
+	chaincodePath = "some/path"
+	chaincodeName = ""
+	require := require.New(t)
+	result := checkChaincodeCmdParams(&cobra.Command{})
+
+	require.Error(result)
+}
+
 func TestCheckChaincodeCmdParamsWithFunctionOnly(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func" }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Error(result)
 }
 
 func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{}`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Error(result)
+}
+
+func TestCheckValidJSON(t *testing.T) {
+	validJSON := `{"Args":["a","b","c"]}`
+	input := &pb.ChaincodeInput{}
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f", "Args":["a","b","c"]}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f", "Args":[]}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f"}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+}
+
+func TestCheckInvalidJSON(t *testing.T) {
+	invalidJSON := `{["a","b","c"]}`
+	input := &pb.ChaincodeInput{}
+	if err := json.Unmarshal([]byte(invalidJSON), &input); err == nil {
+		t.Fail()
+		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
+		return
+	}
+
+	invalidJSON = `{"Function":}`
+	if err := json.Unmarshal([]byte(invalidJSON), &input); err == nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
+		return
+	}
 }
