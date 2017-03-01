@@ -77,11 +77,14 @@ func Start(cc Chaincode) error {
 	chaincodeLogger.Debugf("Peer address: %s", getPeerAddress())
 
 	// viper env setting
-	if viper.GetString("peer.tls.enabled")=="" {
+	if viper.GetString("peer.tls.enabled") == "" {
 		viper.BindEnv("peer.tls.enabled", "CORE_PEER_TLS_ENABLED")
 	}
 	if viper.GetString("peer.tls.serverhostoverride") == "" {
 		viper.BindEnv("peer.tls.serverhostoverride", "CORE_PEER_TLS_SERVERHOSTOVERRIDE")
+	}
+	if viper.GetString("peer.tls.rootcert.file") == "" {
+		viper.BindEnv("peer.tls.rootcert.file", "CORE_PEER_TLS_ROOTCERT_FILE")
 	}
 	if viper.GetString("peer.tls.cert.file") == "" {
 		viper.BindEnv("peer.tls.cert.file", "CORE_PEER_TLS_CERT_FILE")
@@ -89,7 +92,7 @@ func Start(cc Chaincode) error {
 	if viper.GetString("peer.tls.key.file") == "" {
 		viper.BindEnv("peer.tls.key.file", "CORE_PEER_TLS_KEY_FILE")
 	}
-	
+
 	// Establish connection with validating peer
 	clientConn, err := newPeerClientConnection()
 	if err != nil {
@@ -376,7 +379,6 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQ
 	}
 	return &StateRangeQueryIterator{handler, stub.TxID, response, 0}, nil
 }
-
 
 //Given a list of attributes, createCompositeKey function combines these attributes
 //to form a composite key.

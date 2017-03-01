@@ -127,6 +127,7 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 
 	s.peerTLS = viper.GetBool("peer.tls.enabled")
 	if s.peerTLS {
+		s.peerTLSRootCertFile = viper.GetString("peer.tls.rootcert.file")
 		s.peerTLSCertFile = viper.GetString("peer.tls.cert.file")
 		s.peerTLSKeyFile = viper.GetString("peer.tls.key.file")
 		s.peerTLSSvrHostOrd = viper.GetString("peer.tls.serverhostoverride")
@@ -168,6 +169,7 @@ type ChaincodeSupport struct {
 	peerNetworkID        string
 	peerID               string
 	peerTLS              bool
+	peerTLSRootCertFile  string
 	peerTLSCertFile      string
 	peerTLSKeyFile       string
 	peerTLSSvrHostOrd    string
@@ -283,6 +285,7 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLa
 	//if TLS is enabled, pass TLS material to chaincode
 	if chaincodeSupport.peerTLS {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
+		envs = append(envs, "CORE_PEER_TLS_ROOTCERT_FILE="+chaincodeSupport.peerTLSRootCertFile)
 		envs = append(envs, "CORE_PEER_TLS_CERT_FILE="+chaincodeSupport.peerTLSCertFile)
 		if chaincodeSupport.peerTLSSvrHostOrd != "" {
 			envs = append(envs, "CORE_PEER_TLS_SERVERHOSTOVERRIDE="+chaincodeSupport.peerTLSSvrHostOrd)
